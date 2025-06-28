@@ -1,6 +1,5 @@
 #include "audio.h"
 
-#include <driver/i2s.h>
 #include <opus.h>
 #include <stdatomic.h>
 #include <string.h>
