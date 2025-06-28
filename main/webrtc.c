@@ -16,6 +16,7 @@
 
 static const char *TAG = "webrtc";
 
+StaticTask_t task_buffer;
 SemaphoreHandle_t xSemaphore = NULL;
 PeerConnection *g_pc = NULL;
 PeerConnectionState eState = PEER_CONNECTION_CLOSED;
@@ -63,7 +64,15 @@ static void connection_task(void *arg) {
             peer_connection_loop(g_pc);
             xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(15));
+    }
+}
+
+static void send_audio_task(void *arg) {
+    ESP_LOGI(TAG, "Audio send task started");
+    for (;;) {
+        ESP_LOGI(TAG, "Mock send audio task");
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -176,6 +185,7 @@ void webrtc_init(const char *ssid, const char *password) {
         oniceconnectionstatechange);
     peer_connection_ondatachannel(g_pc, onmessage, onopen, NULL);
     peer_connection_onicecandidate(g_pc, on_local_sdp);
+    peer_connection_create_offer(g_pc);
 
     vTaskDelay(pdMS_TO_TICKS(5000));
 
@@ -213,4 +223,28 @@ void webrtc_register_signaling_task(void) {
     if (xTaskCreate(signaling_task, "sig", 8 * 1024, NULL, 5, NULL) != pdPASS) {
         ESP_LOGW(TAG, "Failed to create signaling task");
     }
+}
+
+void webrtc_register_send_audio_task(void) {
+    if (xSemaphore == NULL) {
+        ESP_LOGE(TAG, "Semaphore not initialized");
+        return;
+    }
+
+    if (g_pc == NULL) {
+        ESP_LOGE(TAG, "PeerConnection not initialized");
+        return;
+    }
+
+    StackType_t *stack_memory =
+        (StackType_t *)heap_caps_malloc(20000 * sizeof(StackType_t),
+            MALLOC_CAP_SPIRAM);
+    xTaskCreateStaticPinnedToCore(send_audio_task,
+        "send_audio",
+        20000,
+        NULL,
+        7,
+        stack_memory,
+        &task_buffer,
+        0);
 }

@@ -117,7 +117,7 @@ void init_audio_encoder() {
     encoder_output_buffer = (uint8_t *)malloc(OPUS_OUT_BUFFER_SIZE);
 }
 
-void decode_audio(uint8_t *read_buffer, size_t bytes_read,
+void audio_encode(uint8_t *read_buffer, size_t bytes_read,
     audio_send_cb_t audio_send_cb) {
     if (is_playing) {
         memset(read_buffer, 0, bytes_read);
@@ -125,6 +125,7 @@ void decode_audio(uint8_t *read_buffer, size_t bytes_read,
     convert_int32_to_int16_and_downsample((int32_t *)&read_buffer,
         (int16_t *)&encode_resample_buffer,
         READ_BUFFER_SIZE / sizeof(uint32_t));
+
     int encoded_size = opus_encode(opus_encoder,
         (const opus_int16 *)encode_resample_buffer,
         RESAMPLE_BUFFER_SIZE / sizeof(uint16_t),

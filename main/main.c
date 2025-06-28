@@ -13,8 +13,10 @@ void app_main(void) {
     mic_begin();
     spk_begin();
     init_audio_decoder();
+    init_audio_encoder();
     webrtc_init();
     webrtc_register_connection_task();
     webrtc_register_signaling_task();
+    webrtc_register_send_audio_task();
     vTaskDelete(NULL);
 }

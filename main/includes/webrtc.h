@@ -11,6 +11,7 @@ extern "C" {
 void webrtc_init();
 void webrtc_register_connection_task(void);
 void webrtc_register_signaling_task(void);
+void webrtc_register_send_audio_task(void);
 
 #ifdef __cplusplus
 }
