@@ -41,6 +41,10 @@ void spk_play(int16_t* src, size_t len_samples) {
     }
 }
 
-void spk_write(const void* buf, size_t size, size_t* bytes_written) {
-    i2s_write(I2S_SPK_PORT, buf, size, bytes_written, portMAX_DELAY);
+esp_err_t spk_write(int16_t* buf, size_t size, size_t* bytes_written) {
+    return i2s_write(I2S_NUM_0,
+        buf,
+        size * sizeof(int16_t),
+        bytes_written,
+        portMAX_DELAY);
 }

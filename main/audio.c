@@ -17,9 +17,9 @@
 #define RESAMPLE_BUFFER_SIZE ((READ_BUFFER_SIZE / 4) / 2)
 
 static uint8_t encode_resample_buffer[RESAMPLE_BUFFER_SIZE];
-static uint8_t decode_resample_buffer[READ_BUFFER_SIZE];
+static int16_t decode_resample_buffer[READ_BUFFER_SIZE];
 
-static const char *TAG = "oai_media";
+static const char *TAG = "audio";
 
 void convert_int32_to_int16_and_downsample(int32_t *in, int16_t *out,
     size_t count) {
@@ -73,13 +73,13 @@ void audio_decode(uint8_t *data, size_t size, audio_write_cb_t i2c_write_cb) {
         0);
 
     if (decoded_samples > 0) {
-        convert_16k8_to_32k32((int16_t *)output_buffer,
-            RESAMPLE_BUFFER_SIZE / sizeof(int16_t),
-            (int32_t *)decode_resample_buffer);
+        // convert_16k8_to_32k32((int16_t *)output_buffer,
+        //     RESAMPLE_BUFFER_SIZE / sizeof(int16_t),
+        //     (int32_t *)decode_resample_buffer);
 
         size_t bytes;
         esp_err_t err =
-            i2c_write_cb(decode_resample_buffer, READ_BUFFER_SIZE, &bytes);
+            i2c_write_cb((int16_t *)output_buffer, READ_BUFFER_SIZE, &bytes);
         if (err != ESP_OK) {
             ESP_LOGE(TAG,
                 "audio write callback failed: %s",

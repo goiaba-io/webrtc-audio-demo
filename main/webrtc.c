@@ -5,12 +5,14 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include "audio.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "peer.h"
+#include "speaker.h"
 
 static const char *TAG = "webrtc";
 
@@ -66,12 +68,8 @@ static void connection_task(void *arg) {
 }
 
 void on_audio_track_cb(uint8_t *data, size_t size, void *userdata) {
-    if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-        ESP_LOGI(TAG, "Received audio track data of size %zu", size);
-        xSemaphoreGive(xSemaphore);
-    } else {
-        ESP_LOGW(TAG, "Failed to take semaphore for audio track");
-    }
+    ESP_LOGI(TAG, "Received audio track data of size %zu", size);
+    audio_decode(data, size, spk_write);
 }
 
 static void on_local_sdp(char *sdp, void *ud) {
@@ -195,7 +193,7 @@ void webrtc_register_connection_task(void) {
         return;
     }
 
-    if (xTaskCreate(connection_task, "conn", 8 * 1024, NULL, 5, NULL) !=
+    if (xTaskCreate(connection_task, "conn", 16 * 1024, NULL, 5, NULL) !=
         pdPASS) {
         ESP_LOGW(TAG, "Failed to create connection task");
     }
