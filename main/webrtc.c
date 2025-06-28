@@ -68,11 +68,19 @@ static void connection_task(void *arg) {
     }
 }
 
+static int send_audio(const uint8_t *buf, size_t size) {
+    if (gDataChannelOpened) {
+        peer_connection_send_audio(g_pc, buf, size);
+    }
+    return 0;
+}
 static void send_audio_task(void *arg) {
     ESP_LOGI(TAG, "Audio send task started");
+    init_audio_encoder();
+
     for (;;) {
-        ESP_LOGI(TAG, "Mock send audio task");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        encode_tone_frame(440.0, send_audio);
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
@@ -236,15 +244,8 @@ void webrtc_register_send_audio_task(void) {
         return;
     }
 
-    StackType_t *stack_memory =
-        (StackType_t *)heap_caps_malloc(20000 * sizeof(StackType_t),
-            MALLOC_CAP_SPIRAM);
-    xTaskCreateStaticPinnedToCore(send_audio_task,
-        "send_audio",
-        20000,
-        NULL,
-        7,
-        stack_memory,
-        &task_buffer,
-        0);
+    if (xTaskCreate(send_audio_task, "send_audio", 32 * 1024, NULL, 5, NULL) !=
+        pdPASS) {
+        ESP_LOGW(TAG, "Failed to create signaling task");
+    }
 }

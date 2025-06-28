@@ -139,3 +139,36 @@ void audio_encode(uint8_t *read_buffer, size_t bytes_read,
         audio_send_cb(encoder_output_buffer, encoded_size);
     }
 }
+
+#include <math.h>
+
+#define SAMPLE_RATE 48000
+#define FRAME_DURATION_MS 20
+#define FRAME_SAMPLES (SAMPLE_RATE * FRAME_DURATION_MS / 1000)  // 960
+#define OPUS_MAX_PACKET_BYTES 4000
+
+void encode_tone_frame(float freq_hz, audio_send_cb_t send_cb) {
+    static float phase = 0.0f;
+    const float phase_inc = 2.0f * M_PI * freq_hz / SAMPLE_RATE;
+    int16_t pcm_buf[FRAME_SAMPLES];
+
+    for (int i = 0; i < FRAME_SAMPLES; i++) {
+        pcm_buf[i] = (int16_t)(sinf(phase) * INT16_MAX);
+        phase += phase_inc;
+        if (phase > 2.0f * M_PI) {
+            phase -= 2.0f * M_PI;
+        }
+    }
+
+    int nb = opus_encode(opus_encoder,
+        pcm_buf,
+        FRAME_SAMPLES,
+        encoder_output_buffer,
+        OPUS_MAX_PACKET_BYTES);
+    if (nb < 0) {
+        ESP_LOGE(TAG, "Opus encode failed: %s", opus_strerror(nb));
+        return;
+    }
+
+    send_cb(encoder_output_buffer, nb);
+}
