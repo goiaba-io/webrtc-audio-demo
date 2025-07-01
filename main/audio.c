@@ -6,7 +6,8 @@
 
 #include "esp_log.h"
 
-#define OPUS_SAMPLE_RATE 8000
+#define OPUS_SAMPLE_RATE 16000
+#define FRAME_SAMPLES (OPUS_SAMPLE_RATE / 50)
 
 #define OPUS_OUT_BUFFER_SIZE 1276
 
@@ -14,7 +15,7 @@
 #define OPUS_ENCODER_COMPLEXITY 0
 
 #define READ_BUFFER_SIZE (2560)
-#define RESAMPLE_BUFFER_SIZE ((READ_BUFFER_SIZE / 4) / 2)
+#define RESAMPLE_BUFFER_SIZE (FRAME_SAMPLES * sizeof(opus_int16))
 
 static uint8_t encode_resample_buffer[RESAMPLE_BUFFER_SIZE];
 static int16_t decode_resample_buffer[READ_BUFFER_SIZE];
@@ -50,7 +51,7 @@ void convert_16k8_to_32k32(int16_t *in_buf, size_t in_samples,
     is_playing = any_set;
 }
 
-opus_int16 *output_buffer = NULL;
+static opus_int16 *output_buffer = NULL;
 OpusDecoder *opus_decoder = NULL;
 
 void init_audio_decoder() {
@@ -61,7 +62,7 @@ void init_audio_decoder() {
         return;
     }
 
-    output_buffer = (opus_int16 *)malloc(RESAMPLE_BUFFER_SIZE);
+    output_buffer = malloc(RESAMPLE_BUFFER_SIZE);
 }
 
 void audio_decode(uint8_t *data, size_t size, audio_write_cb_t i2c_write_cb) {
@@ -73,13 +74,13 @@ void audio_decode(uint8_t *data, size_t size, audio_write_cb_t i2c_write_cb) {
         0);
 
     if (decoded_samples > 0) {
-        // convert_16k8_to_32k32((int16_t *)output_buffer,
-        //     RESAMPLE_BUFFER_SIZE / sizeof(int16_t),
-        //     (int32_t *)decode_resample_buffer);
+        convert_16k8_to_32k32((int16_t *)output_buffer,
+            RESAMPLE_BUFFER_SIZE / sizeof(int16_t),
+            (int32_t *)decode_resample_buffer);
 
         size_t bytes;
         esp_err_t err =
-            i2c_write_cb((int16_t *)output_buffer, READ_BUFFER_SIZE, &bytes);
+            i2c_write_cb((int16_t *)output_buffer, decoded_samples, &bytes);
         if (err != ESP_OK) {
             ESP_LOGE(TAG,
                 "audio write callback failed: %s",
@@ -138,37 +139,4 @@ void audio_encode(uint8_t *read_buffer, size_t bytes_read,
     } else {
         audio_send_cb(encoder_output_buffer, encoded_size);
     }
-}
-
-#include <math.h>
-
-#define SAMPLE_RATE 48000
-#define FRAME_DURATION_MS 20
-#define FRAME_SAMPLES (SAMPLE_RATE * FRAME_DURATION_MS / 1000)  // 960
-#define OPUS_MAX_PACKET_BYTES 4000
-
-void encode_tone_frame(float freq_hz, audio_send_cb_t send_cb) {
-    static float phase = 0.0f;
-    const float phase_inc = 2.0f * M_PI * freq_hz / SAMPLE_RATE;
-    int16_t pcm_buf[FRAME_SAMPLES];
-
-    for (int i = 0; i < FRAME_SAMPLES; i++) {
-        pcm_buf[i] = (int16_t)(sinf(phase) * INT16_MAX);
-        phase += phase_inc;
-        if (phase > 2.0f * M_PI) {
-            phase -= 2.0f * M_PI;
-        }
-    }
-
-    int nb = opus_encode(opus_encoder,
-        pcm_buf,
-        FRAME_SAMPLES,
-        encoder_output_buffer,
-        OPUS_MAX_PACKET_BYTES);
-    if (nb < 0) {
-        ESP_LOGE(TAG, "Opus encode failed: %s", opus_strerror(nb));
-        return;
-    }
-
-    send_cb(encoder_output_buffer, nb);
 }

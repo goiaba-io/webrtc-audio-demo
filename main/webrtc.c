@@ -74,12 +74,11 @@ static int send_audio(const uint8_t *buf, size_t size) {
     }
     return 0;
 }
+
 static void send_audio_task(void *arg) {
     ESP_LOGI(TAG, "Audio send task started");
     init_audio_encoder();
-
     for (;;) {
-        encode_tone_frame(440.0, send_audio);
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
