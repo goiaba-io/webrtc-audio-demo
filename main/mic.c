@@ -37,7 +37,7 @@ size_t mic_record(int16_t *dst, size_t len_samples) {
     return bytes >> 1;
 }
 
-size_t mic_peer_send(int16_t *dst, size_t len_samples) {
+size_t mic_read(int16_t *dst, size_t len_samples) {
     size_t bytes = 0;
     i2s_read(I2S_MIC_PORT,
         dst,

@@ -11,10 +11,12 @@
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "mic.h"
 #include "peer.h"
 #include "speaker.h"
 
 static const char *TAG = "webrtc";
+static const int READ_BUFFER_SIZE = 3200;
 
 StaticTask_t task_buffer;
 SemaphoreHandle_t xSemaphore = NULL;
@@ -77,8 +79,16 @@ static int send_audio(const uint8_t *buf, size_t size) {
 
 static void send_audio_task(void *arg) {
     ESP_LOGI(TAG, "Audio send task started");
+    uint8_t read_buffer[READ_BUFFER_SIZE];
     init_audio_encoder();
     for (;;) {
+        size_t samples = mic_read((int16_t *)read_buffer,
+            READ_BUFFER_SIZE / sizeof(int16_t));
+        if (samples == 0) {
+            ESP_LOGW("AUDIO", "no mic data!");
+            continue;
+        }
+        audio_encode(read_buffer, samples * sizeof(int16_t), send_audio);
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }

@@ -62,7 +62,7 @@ void init_audio_decoder() {
         return;
     }
 
-    output_buffer = malloc(RESAMPLE_BUFFER_SIZE);
+    output_buffer = (opus_int16 *)malloc(RESAMPLE_BUFFER_SIZE);
 }
 
 void audio_decode(uint8_t *data, size_t size, audio_write_cb_t i2c_write_cb) {
@@ -90,7 +90,7 @@ void audio_decode(uint8_t *data, size_t size, audio_write_cb_t i2c_write_cb) {
 }
 
 OpusEncoder *opus_encoder = NULL;
-uint8_t *encoder_output_buffer = NULL;
+static uint8_t *encoder_output_buffer = NULL;
 
 void init_audio_encoder() {
     int encoder_error;
