@@ -118,25 +118,16 @@ void init_audio_encoder() {
     encoder_output_buffer = (uint8_t *)malloc(OPUS_OUT_BUFFER_SIZE);
 }
 
-void audio_encode(uint8_t *read_buffer, size_t bytes_read,
-    audio_send_cb_t audio_send_cb) {
-    if (is_playing) {
-        memset(read_buffer, 0, bytes_read);
-    }
-    convert_int32_to_int16_and_downsample((int32_t *)&read_buffer,
-        (int16_t *)&encode_resample_buffer,
-        READ_BUFFER_SIZE / sizeof(uint32_t));
-
-    int encoded_size = opus_encode(opus_encoder,
-        (const opus_int16 *)encode_resample_buffer,
-        RESAMPLE_BUFFER_SIZE / sizeof(uint16_t),
+void audio_encode(int16_t *pcm_samples, size_t sample_count,
+    audio_send_cb_t send_cb) {
+    int nb_bytes = opus_encode(opus_encoder,
+        pcm_samples,
+        sample_count,
         encoder_output_buffer,
         OPUS_OUT_BUFFER_SIZE);
-    if (encoded_size < 0) {
-        ESP_LOGE(TAG,
-            "Failed to encode audio: %s",
-            opus_strerror(encoded_size));
-    } else {
-        audio_send_cb(encoder_output_buffer, encoded_size);
+    if (nb_bytes < 0) {
+        ESP_LOGE(TAG, "Opus encoding failed: %s", opus_strerror(nb_bytes));
+        return;
     }
+    send_cb(encoder_output_buffer, nb_bytes);
 }

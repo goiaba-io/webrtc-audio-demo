@@ -14,8 +14,8 @@ typedef int (*audio_send_cb_t)(const uint8_t* buf, size_t size);
 void init_audio_encoder();
 void init_audio_decoder();
 void audio_decode(uint8_t* data, size_t size, audio_write_cb_t i2c_write_cb);
-void audio_encode(uint8_t* read_buffer, size_t bytes_read,
-    audio_send_cb_t audio_send_cb);
+void audio_encode(int16_t* pcm_samples, size_t sample_count,
+    audio_send_cb_t send_cb);
 #ifdef __cplusplus
 }
 #endif

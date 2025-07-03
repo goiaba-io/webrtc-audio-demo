@@ -1,7 +1,7 @@
 #pragma once
 
 #define SAMPLE_RATE 16000
-#define REC_SECONDS 10
+#define FRAME_SAMPLES 320
 
 #define BTN_PIN 14
 #define LED_PIN 38

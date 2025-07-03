@@ -14,9 +14,11 @@
 #include "mic.h"
 #include "peer.h"
 #include "speaker.h"
+#include "utils.h"
 
 static const char *TAG = "webrtc";
-static const int READ_BUFFER_SIZE = 3200;
+#define READ_BUFFER_SAMPLES FRAME_SAMPLES
+#define READ_BUFFER_SIZE_BYTES (READ_BUFFER_SAMPLES * sizeof(int16_t))
 
 StaticTask_t task_buffer;
 SemaphoreHandle_t xSemaphore = NULL;
@@ -79,16 +81,17 @@ static int send_audio(const uint8_t *buf, size_t size) {
 
 static void send_audio_task(void *arg) {
     ESP_LOGI(TAG, "Audio send task started");
-    uint8_t read_buffer[READ_BUFFER_SIZE];
+    int16_t read_buffer[READ_BUFFER_SIZE_BYTES];
     init_audio_encoder();
+
     for (;;) {
-        size_t samples = mic_read((int16_t *)read_buffer,
-            READ_BUFFER_SIZE / sizeof(int16_t));
-        if (samples == 0) {
-            ESP_LOGW("AUDIO", "no mic data!");
-            continue;
+        size_t samples = mic_read(read_buffer, READ_BUFFER_SAMPLES);
+        if (samples < FRAME_SAMPLES) {
+            memset(read_buffer + samples,
+                0,
+                (FRAME_SAMPLES - samples) * sizeof(int16_t));
         }
-        audio_encode(read_buffer, samples * sizeof(int16_t), send_audio);
+        audio_encode(read_buffer, FRAME_SAMPLES, send_audio);
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
