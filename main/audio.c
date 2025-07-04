@@ -17,38 +17,20 @@
 #define READ_BUFFER_SIZE (2560)
 #define RESAMPLE_BUFFER_SIZE (FRAME_SAMPLES * sizeof(opus_int16))
 
-static uint8_t encode_resample_buffer[RESAMPLE_BUFFER_SIZE];
 static int16_t decode_resample_buffer[READ_BUFFER_SIZE];
 
 static const char *TAG = "audio";
 
-void convert_int32_to_int16_and_downsample(int32_t *in, int16_t *out,
-    size_t count) {
-    for (size_t j = 0, i = 0; i < count; i += 4, j++) {
-        int32_t s = in[i] >> 16;
-        if (s > INT16_MAX) s = INT16_MAX;
-        if (s < INT16_MIN) s = INT16_MIN;
-        out[j] = (int16_t)s;
-    }
-}
-
-bool is_playing = false;
 void convert_16k8_to_32k32(int16_t *in_buf, size_t in_samples,
     int32_t *out_buf) {
     size_t out_index = 0;
-    bool any_set = false;
     for (size_t i = 0; i < in_samples; i++) {
-        if (in_buf[i] != -1 && in_buf[i] != 0) {
-            any_set = true;
-        }
-
         int32_t s = ((int32_t)in_buf[i]) << 16;
         out_buf[out_index++] = s;
         out_buf[out_index++] = s;
         out_buf[out_index++] = s;
         out_buf[out_index++] = s;
     }
-    is_playing = any_set;
 }
 
 static opus_int16 *output_buffer = NULL;
@@ -115,7 +97,7 @@ void init_audio_encoder() {
     opus_encoder_ctl(opus_encoder,
         OPUS_SET_COMPLEXITY(OPUS_ENCODER_COMPLEXITY));
     opus_encoder_ctl(opus_encoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
-    encoder_output_buffer = (uint8_t *)malloc(OPUS_OUT_BUFFER_SIZE);
+    encoder_output_buffer = malloc(OPUS_OUT_BUFFER_SIZE);
 }
 
 void audio_encode(int16_t *pcm_samples, size_t sample_count,
@@ -130,4 +112,15 @@ void audio_encode(int16_t *pcm_samples, size_t sample_count,
         return;
     }
     send_cb(encoder_output_buffer, nb_bytes);
+}
+
+void apply_digital_gain(int16_t *pcm, size_t n, float gain) {
+    for (size_t i = 0; i < n; i++) {
+        int32_t v = (int32_t)(pcm[i] * gain);
+        if (v > INT16_MAX)
+            v = INT16_MAX;
+        else if (v < INT16_MIN)
+            v = INT16_MIN;
+        pcm[i] = (int16_t)v;
+    }
 }

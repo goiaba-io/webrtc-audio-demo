@@ -82,6 +82,7 @@ static int send_audio(const uint8_t *buf, size_t size) {
 static void send_audio_task(void *arg) {
     ESP_LOGI(TAG, "Audio send task started");
     int16_t read_buffer[READ_BUFFER_SIZE_BYTES];
+    const float mic_gain = 2.5f;
     init_audio_encoder();
 
     for (;;) {
@@ -91,13 +92,14 @@ static void send_audio_task(void *arg) {
                 0,
                 (FRAME_SAMPLES - samples) * sizeof(int16_t));
         }
+        apply_digital_gain(read_buffer, FRAME_SAMPLES, mic_gain);
         audio_encode(read_buffer, FRAME_SAMPLES, send_audio);
+
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
 void on_audio_track_cb(uint8_t *data, size_t size, void *userdata) {
-    ESP_LOGI(TAG, "Received audio track data of size %zu", size);
     audio_decode(data, size, spk_write);
 }
 
